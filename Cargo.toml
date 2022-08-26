@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 pin-project-lite = "0.2.0"
 futures-lite = { version = "1.12", default-features = false }
+log = "0.4.17"
+num-traits = { version = "0.2.15", default-features = false }

@@ -33,10 +33,17 @@ impl<I, H, S> Packet<I, H, S> {
         matches!(self, Packet::ResponsePropose(_))
     }
 
-    pub fn response_from_broadcast_propose(pkt: BroadcastPropose<I, H>) -> Self {
+    pub fn response_propose_from_id_hash(epoch_id: I, epoch_hash: H) -> Self {
         Self::ResponsePropose(ResponsePropose {
-            epoch_id: pkt.epoch_id,
-            epoch_hash: pkt.epoch_hash,
+            epoch_id,
+            epoch_hash,
+        })
+    }
+
+    pub fn broadcast_propose_from_id_hash(epoch_id: I, epoch_hash: H) -> Self {
+        Self::BroadcastPropose(BroadcastPropose {
+            epoch_hash,
+            epoch_id,
         })
     }
 }

@@ -1,6 +1,7 @@
-pub struct Voter<V, P> {
+pub struct Voter<V, P, W> {
     pub voter_id: V,
     pub public_key: P,
+    pub weight: W,
 }
 
 pub struct VoteSign<S> {
@@ -8,6 +9,7 @@ pub struct VoteSign<S> {
     pub sign: S,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Role {
     Proposer,
     Follower,
