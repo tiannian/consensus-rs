@@ -3,15 +3,27 @@ pub struct Voter<V, P> {
     pub public_key: P,
 }
 
-pub struct VoterSet<V, P> {
-    pub set: Vec<Voter<V, P>>,
-}
-
 pub struct VoteSign<S> {
     pub vs_idx: u64,
     pub sign: S,
 }
 
-pub struct VoteSignSet<S> {
-    pub set: Vec<VoteSign<S>>,
+pub enum Role {
+    Proposer,
+    Follower,
+    Observer,
+}
+
+impl Role {
+    pub fn is_proposer(&self) -> bool {
+        matches!(self, Role::Proposer)
+    }
+
+    pub fn is_follower(&self) -> bool {
+        matches!(self, Role::Follower)
+    }
+
+    pub fn is_observer(&self) -> bool {
+        matches!(self, Role::Observer)
+    }
 }

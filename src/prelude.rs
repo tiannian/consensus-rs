@@ -1,19 +1,28 @@
-use async_trait::async_trait;
+use core::future::Future;
 
-use crate::{
-    braft::Role,
-    messages::{RecvPacket, SendPacket},
-};
+use crate::{messages::Packet, Role};
 
-#[async_trait]
-pub trait Network<I, H, S> {
-    fn send(&self, pkt: SendPacket<I, H>);
+// #[async_trait]
+pub trait Network<I, H> {
+    type NodeId;
 
-    async fn recv(&self) -> Option<RecvPacket<I, H, S>>;
+    type RecvFuture: Future<Output = Option<(Packet<I, H>, Self::NodeId)>>;
+
+    fn sign_and_send(&self, target: Option<Self::NodeId>, pkt: Packet<I, H>);
+
+    fn recv(&self) -> Self::RecvFuture;
 }
 
 pub trait App {}
 
-pub trait Consensus<H> {
-    fn role(&self, epoch_hash: &H) -> Role;
+pub trait Consensus {
+    type EpochId;
+
+    type EpochHash;
+
+    type Timer: Future<Output = ()> + Sized;
+
+    fn step_timer(&self, step: u8) -> Self::Timer;
+
+    fn role(&self, epoch_hash: &Self::EpochHash) -> Role;
 }
