@@ -6,14 +6,22 @@ use crate::{messages::Packet, Role};
 pub trait Network<I, H> {
     type NodeId;
 
-    type RecvFuture: Future<Output = Option<(Packet<I, H>, Self::NodeId)>>;
+    type PublicKey;
 
-    fn sign_and_send(&self, target: Option<Self::NodeId>, pkt: Packet<I, H>);
+    type Signature;
+
+    type RecvFuture: Future<Output = Option<(Packet<I, H, Self::Signature>, Self::NodeId)>>;
+
+    fn sign_and_send(&self, target: Option<Self::NodeId>, pkt: Packet<I, H, Self::Signature>);
 
     fn recv(&self) -> Self::RecvFuture;
 }
 
-pub trait App {}
+pub trait App<I, H> {
+    fn enter_step(&mut self, step: u8, epoch_id: I, epoch_hash: H);
+
+    fn commit(&mut self, epoch_id: I, epoch_hash: H);
+}
 
 pub trait Consensus {
     type EpochId;
