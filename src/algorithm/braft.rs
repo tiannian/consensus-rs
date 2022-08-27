@@ -241,7 +241,7 @@ where
                 // Only process right vote. beacuse raft is not BFT.
                 let sign = rp.vote_sign.ok_or(Error::NoSignature)?;
 
-                if let Some(voter) = self.voter_set.get(sign.vs_idx as usize) {
+                if let Some(voter) = self.voter_set.get(sign.idx as usize) {
                     self.weight += voter.weight.clone();
                 } else {
                     log::error!("index of packet out of bound");
