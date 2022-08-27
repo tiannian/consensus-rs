@@ -5,6 +5,7 @@ use alloc::vec::Vec;
 use crate::VoteSign;
 
 /// Broadcast propopse to other node
+#[derive(Debug)]
 pub struct BroadcastPropose<I, H, S> {
     pub epoch_id: I,
     pub epoch_hash: H,
@@ -12,6 +13,7 @@ pub struct BroadcastPropose<I, H, S> {
 }
 
 /// Response propopse to proposer
+#[derive(Debug)]
 pub struct ResponsePropose<I, H, S> {
     pub epoch_id: I,
     pub epoch_hash: H,
@@ -19,6 +21,7 @@ pub struct ResponsePropose<I, H, S> {
 }
 
 /// Broadcast commit to other node
+#[derive(Debug)]
 pub struct BroadcastCommit<I, H, S> {
     pub epoch_id: I,
     pub epoch_hash: H,
@@ -26,6 +29,7 @@ pub struct BroadcastCommit<I, H, S> {
 }
 
 /// Packet for network
+#[derive(Debug)]
 pub enum Packet<I, H, S> {
     BroadcastPropose(BroadcastPropose<I, H, S>),
     ResponsePropose(ResponsePropose<I, H, S>),

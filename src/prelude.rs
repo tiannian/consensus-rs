@@ -3,7 +3,8 @@
 use core::{
     fmt::Debug,
     future::Future,
-    ops::{Add, AddAssign},
+    iter::Sum,
+    ops::{Add, AddAssign, Mul},
 };
 
 use alloc::vec::Vec;
@@ -17,7 +18,7 @@ pub trait Network<N, P, I, H> {
     type Error: Debug + 'static;
 
     /// Signature generate by node key.
-    type Signature: Clone;
+    type Signature: Signature;
 
     /// Get current node key.
     fn node_id(&self) -> N;
@@ -57,7 +58,7 @@ pub trait App<N, P, W, I, H> {
     /// Commit hook
     ///
     /// Means all voter confirm this epoch.
-    fn commit(&mut self, epoch_id: I, epoch_hash: H) -> Self::CommitFuture;
+    fn commit(&mut self, epoch_id: &I, epoch_hash: &H) -> Self::CommitFuture;
 }
 
 /// EpochId type.
@@ -69,12 +70,16 @@ pub trait EpochHash: Clone + Eq + Debug {}
 impl<T> EpochHash for T where T: Clone + Eq + Debug {}
 
 /// NodeId type.
-pub trait NodeId: Clone + Eq {}
-impl<T> NodeId for T where T: Clone + Eq {}
+pub trait NodeId: Clone + Eq + Debug {}
+impl<T> NodeId for T where T: Clone + Eq + Debug {}
 
 /// Weight type.
-pub trait Weight: Clone + Zero + AddAssign + Eq {}
-impl<T> Weight for T where T: Clone + Zero + AddAssign + Eq {}
+pub trait Weight: Clone + Zero + One + AddAssign + Eq + Sum + Mul<Output = Self> + Ord {}
+impl<T> Weight for T where T: Clone + Zero + One + AddAssign + Eq + Sum + Mul<Output = Self> + Ord {}
+
+/// Signature
+pub trait Signature: Clone + Debug {}
+impl<T> Signature for T where T: Clone + Debug {}
 
 /// Consensus
 pub trait Consensus {

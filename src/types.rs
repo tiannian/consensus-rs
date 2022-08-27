@@ -13,6 +13,7 @@ pub struct Voter<V, P, W> {
 /// Signature for voter
 ///
 /// `idx` is the order of voter set.
+#[derive(Debug)]
 pub struct VoteSign<S> {
     pub idx: u64,
     pub sign: S,
