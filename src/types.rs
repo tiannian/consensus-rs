@@ -37,7 +37,7 @@ impl Role {
         matches!(self, Role::Follower)
     }
 
-    pub(crate) fn is_observer(&self) -> bool {
-        matches!(self, Role::Observer)
-    }
+    /*     pub(crate) fn is_observer(&self) -> bool { */
+    /* matches!(self, Role::Observer) */
+    /* } */
 }

@@ -2,8 +2,7 @@ use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     messages::{BroadcastCommit, BroadcastPropose, Packet},
-    App, Consensus, Network,
-    Error, Result, Role, VoteSign, Voter,
+    App, Consensus, Error, Network, Result, Role, VoteSign, Voter,
 };
 
 /// Raft for blockchain.
@@ -308,7 +307,8 @@ where
             self.round = 0;
             self.step = 0;
 
-            let vs = self.app
+            let vs = self
+                .app
                 .commit(epoch_id, epoch_hash)
                 .await
                 .map_err(Error::app_error)?;
