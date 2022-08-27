@@ -59,6 +59,8 @@ where
             role = consensus.compute_role(&epoch_hash);
         }
 
+        log::info!("Start node at epoch_id: {:?}", epoch_id);
+
         Ok(Self {
             network,
             consensus,
@@ -79,6 +81,9 @@ where
     /// Run this method on loop.
     pub async fn trig(&mut self) -> Result<()> {
         use futures_lite::future::FutureExt;
+
+        log::info!("On epoch_id/round/step: {:?}/{}/{}", self.epoch_id, self.round, self.step);
+        log::info!("Self node role is {:?}", self.role);
 
         if self.role.is_follower() && self.step == 0 {
             // Wait BroadcastPropose.
