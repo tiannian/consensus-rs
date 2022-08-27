@@ -2,14 +2,15 @@
 
 extern crate alloc;
 
-pub mod prelude;
+mod prelude;
+pub use prelude::*;
 
 pub mod messages;
 
 mod types;
 pub use types::*;
 
-pub mod braft;
+pub mod algorithm;
 
 mod error;
 pub use error::*;

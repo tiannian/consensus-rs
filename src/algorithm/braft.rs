@@ -2,10 +2,13 @@ use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     messages::{BroadcastCommit, BroadcastPropose, Packet},
-    prelude::{App, Consensus, Network},
+    App, Consensus, Network,
     Error, Result, Role, VoteSign, Voter,
 };
 
+/// Raft for blockchain.
+///
+/// Variant of raft for blockchain.
 pub struct BRaft<N, A, C>
 where
     C: Consensus,
@@ -34,7 +37,9 @@ where
     C: Consensus,
     A: App<C::NodeId, C::PublicKey, C::Weight, C::EpochId, C::EpochHash>,
 {
-    /// Inital state.
+    /// Build braft node
+    ///
+    /// Pass lowlevel network, consensus and application.
     pub fn new(network: N, consensus: C, app: A) -> Result<Self> {
         let node_id = network.node_id();
 
@@ -70,6 +75,9 @@ where
         })
     }
 
+    /// Trigger consensus.
+    ///
+    /// Run this method on loop.
     pub async fn trig(&mut self) -> Result<()> {
         use futures_lite::future::FutureExt;
 
@@ -130,14 +138,9 @@ where
             self.collect_propose().await?;
         }
 
-        // Update role and voter_set
+        // Update role and weight
         if self.step == 0 && self.round == 0 {
             self.role = self.consensus.compute_role(&self.epoch_hash);
-            self.voter_set = self
-                .app
-                .voter_set(&self.epoch_hash)
-                .await
-                .map_err(Error::app_error)?;
             self.weight = num_traits::zero();
         }
 
@@ -264,7 +267,7 @@ where
     async fn process_propose(
         &mut self,
         sender: C::NodeId,
-        pkt: BroadcastPropose<C::EpochId, C::EpochHash>,
+        pkt: BroadcastPropose<C::EpochId, C::EpochHash, N::Signature>,
     ) -> Result<()> {
         let epoch_id = pkt.epoch_id;
         let epoch_hash = pkt.epoch_hash;
@@ -305,10 +308,11 @@ where
             self.round = 0;
             self.step = 0;
 
-            self.app
+            let vs = self.app
                 .commit(epoch_id, epoch_hash)
                 .await
                 .map_err(Error::app_error)?;
+            self.voter_set = vs;
         } else {
             log::warn!(
                 "Receive error epoch id on `BroadcastCommit`, expect: > {:?}, got: {:?}. ignore this packet",
