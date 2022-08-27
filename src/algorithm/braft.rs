@@ -1,7 +1,7 @@
 use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
-    messages::{BroadcastCommit, BroadcastPropose, Packet},
+    packet::{BroadcastCommit, BroadcastPropose, Packet},
     App, Consensus, Error, Network, Result, Role, VoteSign, Voter,
 };
 

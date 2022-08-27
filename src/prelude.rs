@@ -9,7 +9,7 @@ use core::{
 use alloc::vec::Vec;
 use num_traits::{One, Zero};
 
-use crate::{messages::Packet, Role, Voter};
+use crate::{packet::Packet, Role, Voter};
 
 /// Network for node.
 pub trait Network<N, P, I, H> {

@@ -5,7 +5,7 @@ extern crate alloc;
 mod prelude;
 pub use prelude::*;
 
-pub mod messages;
+pub mod packet;
 
 mod types;
 pub use types::*;
