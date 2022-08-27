@@ -1,9 +1,9 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     messages::{BroadcastCommit, BroadcastPropose, Packet},
     prelude::{App, Consensus, Network},
-    utils, Error, Result, Role, VoteSign, Voter,
+    Error, Result, Role, VoteSign, Voter,
 };
 
 pub struct BRaft<N, A, C>
@@ -23,7 +23,7 @@ where
     round: u64,
     step: u8,
 
-    weights: BTreeMap<C::EpochHash, C::Weight>,
+    weight: C::Weight,
     vote_signs: Vec<VoteSign<N::Signature>>,
     voter_set: Vec<Voter<C::NodeId, C::PublicKey, C::Weight>>,
 }
@@ -32,7 +32,7 @@ impl<N, A, C> BRaft<N, A, C>
 where
     N: Network<C::NodeId, C::PublicKey, C::EpochId, C::EpochHash>,
     C: Consensus,
-    A: App<C::EpochId, C::EpochHash>,
+    A: App<C::NodeId, C::PublicKey, C::Weight, C::EpochId, C::EpochHash>,
 {
     /// Inital state.
     pub fn new(network: N, consensus: C, app: A) -> Result<Self> {
@@ -63,8 +63,8 @@ where
             role,
             app,
             voter_set,
+            weight: num_traits::zero(),
             vote_signs: Vec::new(),
-            weights: BTreeMap::new(),
             round: 0,
             step: 0,
         })
@@ -72,43 +72,54 @@ where
 
     pub async fn trig(&mut self) -> Result<()> {
         use futures_lite::future::FutureExt;
-        use utils::MapFutureExt;
-
-        let timer_map_helper =
-            |_| -> Option<(Packet<C::EpochId, C::EpochHash, N::Signature>, C::NodeId)> { None };
 
         if self.role.is_follower() && self.step == 0 {
             // Wait BroadcastPropose.
 
-            let timer = self
-                .consensus
-                .step_timer(&self.role, self.step)
-                .map(timer_map_helper);
+            let timer = async {
+                self.consensus.step_timer(&Role::Follower, 0);
+                Err(Error::Timeout)
+            };
 
-            if let Some((pkt, sender)) = self.network.recv().or(timer).await {
-                match pkt {
-                    Packet::BroadcastPropose(bc) => self.process_propose(sender, bc).await?,
-                    Packet::ResponsePropose(_) => self.error_packet(&pkt),
-                    Packet::BroadcastCommit(bc) => self.verify_and_accept_epoch(bc).await?,
+            let recver = async {
+                let pkt = self.network.recv().await.map_err(Error::network_error)?;
+                Ok(pkt)
+            };
+
+            let pkt = recver.or(timer).await;
+
+            match pkt {
+                Ok((p, sender)) => self.wait_propose(p, sender).await?,
+                Err(Error::Timeout) => {
+                    self.round += 1;
+                    self.step = 0;
                 }
-            } else {
-                self.round = 1;
-                self.step = 0;
+                Err(e) => return Err(e),
             }
         } else if self.role.is_follower() && self.step == 1 {
             // Wait BroadcastCommit.
 
-            let timer = self
-                .consensus
-                .step_timer(&self.role, self.step)
-                .map(timer_map_helper);
+            let timer = async {
+                self.consensus.step_timer(&Role::Follower, 1);
+                Err(Error::Timeout)
+            };
 
-            if let Some((pkt, _sender)) = self.network.recv().or(timer).await {
-                match pkt {
-                    Packet::BroadcastCommit(bc) => self.verify_and_accept_epoch(bc).await?,
-                    _ => self.error_packet(&pkt),
+            let recver = async {
+                let pkt = self.network.recv().await.map_err(Error::network_error)?;
+                Ok(pkt)
+            };
+
+            let pkt = recver.or(timer).await;
+
+            match pkt {
+                Ok((p, _sender)) => self.wait_commit(p).await?,
+                Err(Error::Timeout) => {
+                    self.round += 1;
+                    self.step = 0;
                 }
+                Err(e) => return Err(e),
             }
+            /* } */
         } else if self.role.is_proposer() && self.step == 0 {
             // Propose epoch.
 
@@ -116,14 +127,44 @@ where
         } else if self.role.is_proposer() && self.step == 1 {
             // Collect all `ResponsePropose`.
 
-            let timer = self
-                .consensus
-                .step_timer(&self.role, self.step)
-                .map(timer_map_helper);
+            self.collect_propose().await?;
         }
 
+        // Update role and voter_set
         if self.step == 0 && self.round == 0 {
             self.role = self.consensus.compute_role(&self.epoch_hash);
+            self.voter_set = self
+                .app
+                .voter_set(&self.epoch_hash)
+                .await
+                .map_err(Error::app_error)?;
+            self.weight = num_traits::zero();
+        }
+
+        Ok(())
+    }
+
+    async fn wait_propose(
+        &mut self,
+        pkt: Packet<C::EpochId, C::EpochHash, N::Signature>,
+        sender: C::NodeId,
+    ) -> Result<()> {
+        match pkt {
+            Packet::BroadcastPropose(bc) => self.process_propose(sender, bc).await?,
+            Packet::ResponsePropose(_) => self.error_packet(&pkt),
+            Packet::BroadcastCommit(bc) => self.verify_and_accept_epoch(bc).await?,
+        }
+        Ok(())
+    }
+
+    async fn wait_commit(
+        &mut self,
+        pkt: Packet<C::EpochId, C::EpochHash, N::Signature>,
+    ) -> Result<()> {
+        if let Packet::BroadcastCommit(bc) = pkt {
+            self.verify_and_accept_epoch(bc).await?
+        } else {
+            self.error_packet(&pkt);
         }
 
         Ok(())
@@ -139,16 +180,83 @@ where
     }
 
     async fn propose_epoch(&mut self) -> Result<()> {
-        let (epoch_id, epoch_hash) = self
-            .app
-            .propose_epoch()
-            .await
-            .map_err(Error::from_core_debug)?;
+        let (epoch_id, epoch_hash) = self.app.propose_epoch().await.map_err(Error::app_error)?;
+
+        self.epoch_id = epoch_id.clone();
+        self.epoch_hash = epoch_hash.clone();
 
         self.network.sign_and_send(
             None,
             Packet::broadcast_propose_from_id_hash(epoch_id, epoch_hash),
         );
+
+        Ok(())
+    }
+
+    async fn collect_propose(&mut self) -> Result<()> {
+        use futures_lite::FutureExt;
+
+        let mut flag = true;
+
+        let timer = self.consensus.step_timer(&Role::Proposer, 1);
+
+        // Make this future to unpin.
+        let mut timer = Box::pin(async move {
+            timer.await;
+            Err(Error::Timeout)
+        });
+
+        while flag {
+            let recver = self.network.recv();
+
+            let recver = async move {
+                let pkt = recver.await.map_err(Error::network_error)?;
+                Ok(pkt)
+            };
+
+            let pkt = recver.or(&mut timer).await;
+
+            match pkt {
+                Ok((pkt, _sender)) => self.add_propose_wight(pkt)?,
+                Err(Error::Timeout) => flag = false,
+                Err(e) => return Err(e),
+            }
+        }
+
+        Ok(())
+    }
+
+    fn add_propose_wight(
+        &mut self,
+        pkt: Packet<C::EpochId, C::EpochHash, N::Signature>,
+    ) -> Result<()> {
+        if let Packet::ResponsePropose(rp) = pkt {
+            let epoch_id = rp.epoch_id;
+            let epoch_hash = rp.epoch_hash;
+
+            if epoch_id == self.epoch_id && epoch_hash == self.epoch_hash {
+                // Only process right vote. beacuse raft is not BFT.
+                let sign = rp.vote_sign.ok_or(Error::NoSignature)?;
+
+                if let Some(voter) = self.voter_set.get(sign.vs_idx as usize) {
+                    self.weight += voter.weight.clone();
+                } else {
+                    log::error!("index of packet out of bound");
+                }
+
+                self.vote_signs.push(sign);
+            } else {
+                log::error!(
+                    "Error epoch_id: {:?}, expect: {:?}; epoch_hash: {:?}, expect: {:?}",
+                    epoch_id,
+                    self.epoch_id,
+                    epoch_hash,
+                    self.epoch_hash
+                );
+            }
+        } else {
+            self.error_packet(&pkt);
+        }
 
         Ok(())
     }
@@ -165,7 +273,7 @@ where
             self.app
                 .enter_step(0, epoch_id.clone(), epoch_hash.clone())
                 .await
-                .map_err(Error::from_core_debug)?;
+                .map_err(Error::app_error)?;
 
             self.network.sign_and_send(
                 Some(sender),
@@ -194,10 +302,13 @@ where
             self.epoch_id = epoch_id.clone();
             self.epoch_hash = epoch_hash.clone();
 
+            self.round = 0;
+            self.step = 0;
+
             self.app
                 .commit(epoch_id, epoch_hash)
                 .await
-                .map_err(Error::from_core_debug)?;
+                .map_err(Error::app_error)?;
         } else {
             log::warn!(
                 "Receive error epoch id on `BroadcastCommit`, expect: > {:?}, got: {:?}. ignore this packet",
