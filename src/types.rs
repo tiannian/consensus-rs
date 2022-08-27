@@ -3,6 +3,7 @@
 /// Map voter id and voter's public key.
 /// The public key use to verify packet from other node and vote epoch.
 /// We can give voter a weight.
+#[derive(Debug, Clone)]
 pub struct Voter<V, P, W> {
     pub voter_id: V,
     pub public_key: P,

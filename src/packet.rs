@@ -56,4 +56,16 @@ impl<I, H, S> Packet<I, H, S> {
             vote_sign: None,
         })
     }
+
+    pub fn broadcast_commit_from_id_hash(
+        epoch_id: I,
+        epoch_hash: H,
+        vote_signs: Vec<VoteSign<S>>,
+    ) -> Self {
+        Self::BroadcastCommit(BroadcastCommit {
+            epoch_hash,
+            epoch_id,
+            vote_signs,
+        })
+    }
 }

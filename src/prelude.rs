@@ -23,7 +23,7 @@ pub trait Network<N, P, I, H> {
     fn node_id(&self) -> N;
 
     /// Sign packet and send to other node.
-    fn sign_and_send(&self, target: Option<N>, pkt: Packet<I, H, Self::Signature>);
+    fn send_unsigned(&self, target: Option<N>, pkt: Packet<I, H, Self::Signature>);
 
     /// Future for recv method.
     type RecvFuture: Future<Output = Result<(Packet<I, H, Self::Signature>, N), Self::Error>>;
@@ -62,15 +62,19 @@ pub trait App<N, P, W, I, H> {
 
 /// EpochId type.
 pub trait EpochId: Clone + Eq + Ord + Debug + Add<Output = Self> + One + Zero {}
+impl<T> EpochId for T where T: Clone + Eq + Ord + Debug + Add<Output = Self> + One + Zero {}
 
 /// EpochHash type.
 pub trait EpochHash: Clone + Eq + Debug {}
+impl<T> EpochHash for T where T: Clone + Eq + Debug {}
 
 /// NodeId type.
 pub trait NodeId: Clone + Eq {}
+impl<T> NodeId for T where T: Clone + Eq {}
 
 /// Weight type.
 pub trait Weight: Clone + Zero + AddAssign + Eq {}
+impl<T> Weight for T where T: Clone + Zero + AddAssign + Eq {}
 
 /// Consensus
 pub trait Consensus {

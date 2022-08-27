@@ -1,3 +1,5 @@
+use core::mem;
+
 use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
@@ -82,7 +84,12 @@ where
     pub async fn trig(&mut self) -> Result<()> {
         use futures_lite::future::FutureExt;
 
-        log::info!("On epoch_id/round/step: {:?}/{}/{}", self.epoch_id, self.round, self.step);
+        log::info!(
+            "On epoch_id/round/step: {:?}/{}/{}",
+            self.epoch_id,
+            self.round,
+            self.step
+        );
         log::info!("Self node role is {:?}", self.role);
 
         if self.role.is_follower() && self.step == 0 {
@@ -136,10 +143,15 @@ where
             // Propose epoch.
 
             self.propose_epoch().await?;
+
+            self.step = 1;
         } else if self.role.is_proposer() && self.step == 1 {
             // Collect all `ResponsePropose`.
 
             self.collect_propose().await?;
+
+            self.step = 0;
+            self.round = 0;
         }
 
         // Update role and weight
@@ -192,7 +204,7 @@ where
         self.epoch_id = epoch_id.clone();
         self.epoch_hash = epoch_hash.clone();
 
-        self.network.sign_and_send(
+        self.network.send_unsigned(
             None,
             Packet::broadcast_propose_from_id_hash(epoch_id, epoch_hash),
         );
@@ -229,6 +241,17 @@ where
                 Err(e) => return Err(e),
             }
         }
+
+        let vote_signs = mem::take(&mut self.vote_signs);
+
+        self.network.send_unsigned(
+            None,
+            Packet::broadcast_commit_from_id_hash(
+                self.epoch_id.clone(),
+                self.epoch_hash.clone(),
+                vote_signs,
+            ),
+        );
 
         Ok(())
     }
@@ -282,7 +305,7 @@ where
                 .await
                 .map_err(Error::app_error)?;
 
-            self.network.sign_and_send(
+            self.network.send_unsigned(
                 Some(sender),
                 Packet::response_propose_from_id_hash(epoch_id, epoch_hash),
             );
@@ -327,5 +350,150 @@ where
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::{pin::Pin, time::Duration};
+
+    use alloc::{boxed::Box, string::String, vec::Vec};
+    use futures_lite::Future;
+    use smol::{
+        channel::{unbounded, Receiver, Sender},
+        Timer,
+    };
+
+    use crate::{packet::Packet, App, Consensus, Network, Role, Voter};
+
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    struct SingleApp {
+        pub epoch_id: u64,
+        pub epoch_hash: u64,
+        pub voter: Voter<Vec<u8>, Vec<u8>, u64>,
+    }
+
+    impl App<Vec<u8>, Vec<u8>, u64, u64, u64> for SingleApp {
+        type Error = String;
+
+        type ProposeEpochFuture = Pin<Box<dyn Future<Output = Result<(u64, u64), String>>>>;
+
+        type EnterStepFuture = Pin<Box<dyn Future<Output = Result<(u64, u64), Self::Error>>>>;
+
+        type CommitFuture =
+            Pin<Box<dyn Future<Output = Result<Vec<Voter<Vec<u8>, Vec<u8>, u64>>, Self::Error>>>>;
+
+        fn propose_epoch(&mut self) -> Self::ProposeEpochFuture {
+            let epoch_id = self.epoch_id;
+            let epoch_hash = self.epoch_hash;
+
+            Box::pin(async move { Ok((epoch_id, epoch_hash)) })
+        }
+
+        fn enter_step(
+            &mut self,
+            _step: u8,
+            epoch_id: u64,
+            epoch_hash: u64,
+        ) -> Self::EnterStepFuture {
+            Box::pin(async move { Ok((epoch_id, epoch_hash)) })
+        }
+
+        fn commit(&mut self, epoch_id: u64, epoch_hash: u64) -> Self::CommitFuture {
+            self.epoch_id = epoch_id + 1;
+            self.epoch_hash = epoch_hash + 1;
+
+            let voter = alloc::vec![self.voter.clone()];
+
+            Box::pin(async move { Ok(voter) })
+        }
+    }
+
+    struct SingleConsensus {
+        pub voter: Voter<Vec<u8>, Vec<u8>, u64>,
+    }
+
+    impl Consensus for SingleConsensus {
+        type Timer = Pin<Box<dyn Future<Output = ()>>>;
+
+        type NodeId = Vec<u8>;
+
+        type Weight = u64;
+
+        type EpochId = u64;
+
+        type PublicKey = Vec<u8>;
+
+        type EpochHash = u64;
+
+        fn step_timer(&self, _role: &Role, _step: u8) -> Self::Timer {
+            Box::pin(async move {
+                Timer::after(Duration::from_secs(1)).await;
+            })
+        }
+
+        fn latest_epoch(&self) -> (Self::EpochId, Self::EpochHash) {
+            (0, 0)
+        }
+
+        fn latest_voter_set(&self) -> Vec<Voter<Self::NodeId, Self::PublicKey, Self::Weight>> {
+            alloc::vec![self.voter.clone()]
+        }
+
+        fn compute_role(&self, _epoch_hash: &Self::EpochHash) -> Role {
+            Role::Proposer
+        }
+    }
+
+    struct SingleNetwork {
+        sender: Sender<Packet<u64, u64, Vec<u8>>>,
+        recver: Receiver<Packet<u64, u64, Vec<u8>>>,
+    }
+
+    impl SingleNetwork {
+        pub fn new() -> Self {
+            let (sender, recver) = unbounded();
+
+            Self { sender, recver }
+        }
+    }
+
+    impl Network<Vec<u8>, Vec<u8>, u64, u64> for SingleNetwork {
+        type Error = String;
+
+        type Signature = Vec<u8>;
+
+        type RecvFuture = Pin<
+            Box<
+                dyn Future<
+                    Output = Result<(Packet<u64, u64, Self::Signature>, Vec<u8>), Self::Error>,
+                >,
+            >,
+        >;
+
+        fn node_id(&self) -> Vec<u8> {
+            alloc::vec![1]
+        }
+
+        fn send_unsigned(&self, _target: Option<Vec<u8>>, pkt: Packet<u64, u64, Self::Signature>) {
+            self.sender.try_send(pkt).unwrap();
+        }
+
+        fn recv(&self) -> Self::RecvFuture {
+            let recver = self.recver.clone();
+
+            Box::pin(async move {
+                let pkt = recver.recv().await.unwrap();
+                Ok((pkt, self.node_id()))
+            })
+        }
+    }
+
+    #[test]
+    fn signle_node() {
+        init();
     }
 }
