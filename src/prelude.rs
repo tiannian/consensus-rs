@@ -119,5 +119,5 @@ pub trait Consensus {
     fn step_timer(&self, role: &Role, step: u8) -> Self::Timer;
 
     /// Compute proposer based on epoch hash.
-    fn compute_role(&self, epoch_hash: &Self::EpochHash) -> Role;
+    fn compute_proposer(&self, epoch_hash: &Self::EpochHash) -> Self::NodeId;
 }
