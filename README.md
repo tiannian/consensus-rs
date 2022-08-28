@@ -2,7 +2,7 @@
 
 ## Support Algorithms
 
-- [ ] BRaft
+- [X] BRaft
 - [ ] BPBFT
 - [ ] Tendermint
 
