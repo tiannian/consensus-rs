@@ -120,4 +120,6 @@ pub trait Consensus {
 
     /// Compute proposer based on epoch hash.
     fn compute_proposer(&self, epoch_hash: &Self::EpochHash) -> Self::NodeId;
+
+    /// TODO: Add EpochHash unique check.
 }
