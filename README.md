@@ -101,17 +101,35 @@ When `Epoch` is consensus, It use the latest `Voter Set`.
 When an `Epoch` reach consensus, the framework checks and updates the voter set.
 The `NodeID` must be unique, or fallback to latest `Voter Set`
 
-### Network and Signature
+### Network Layer
+
+The framework will make signature for all outcoming packet, and verify all the
+signature of incoming packet.
+
+The Network Layer only have 3 method. The framework use these methods to complete P2P communication.
+
+```rust
+fn node_id() -> NodeId;
+
+async fn send_unsigned(node_id: Option<&NodeId>, pkt: Packet);
+
+async fn recv() -> (Packet, NodeId);
+```
+
+Use `send_unsigned` to send an unsigned packet. The Network Layer use this node's secret key to
+sign this packet. 
+
+If `node_id` is `None`, the Network Layer will broadcast this packet.
+The Network Layer broadcast to all the Voter node first.
+It will broadcast to Non-Voter node also.
+
+If is a `node_id`, send packet to the specific code.
+
+Use `recv` to receive packet from other node. If message from Voter, the node id also got.
 
 #### Packet
 
-#### P2P Network.
-
-##### Incoming Packet
-
-##### Outcoming Packet
-
-### Consensus and Proposer Election
+### Consensus Layer
 
 #### Latest Epoch
 
