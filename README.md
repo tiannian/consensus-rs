@@ -1,5 +1,7 @@
 # consensus-rs
 
+> A finalized consensus for blockchain and other distributed system.
+
 ## Support Algorithms
 
 - [X] BRaft
@@ -80,9 +82,24 @@ The framework supports weight-based fault tolerance. With weight:
 
 ### Node ID and Identity
 
-Each Node have an ID and Keypair(s).
+Each Node have an NodeID and Keypair(s).
+
+NodeID must be a unique, recommend to compute this use hash.
+
+This framework does not check `PublicKey` with `NodeID`.
 
 #### Voter Set and Weight
+
+`Voter Set` is an array of voters. Each voter include these field:
+
+- NodeID
+- PublicKey
+- Weight
+
+When `Epoch` is consensus, It use the latest `Voter Set`.
+
+When an `Epoch` reach consensus, the framework checks and updates the voter set.
+The `NodeID` must be unique, or fallback to latest `Voter Set`
 
 ### Network and Signature
 
