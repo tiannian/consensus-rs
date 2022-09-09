@@ -31,7 +31,7 @@ impl SingleApp {
     }
 }
 
-impl App<Vec<u8>, Vec<u8>, u64, u64, u64> for SingleApp {
+impl App<SingleConsensus> for SingleApp {
     type Error = String;
 
     type ProposeEpochFuture = Pin<Box<dyn Future<Output = Result<(u64, u64), String>>>>;
@@ -92,6 +92,8 @@ impl Consensus for SingleConsensus {
 
     type EpochHash = u64;
 
+    type Signature = Vec<u8>;
+
     fn step_timer(&self, _role: &Role, _step: u8) -> Self::Timer {
         Box::pin(async move {
             Timer::after(Duration::from_secs(1)).await;
@@ -124,20 +126,18 @@ impl SingleNetwork {
     }
 }
 
-impl Network<Vec<u8>, Vec<u8>, u64, u64> for SingleNetwork {
+impl Network<SingleConsensus> for SingleNetwork {
     type Error = String;
 
-    type Signature = Vec<u8>;
-
     type RecvFuture = Pin<
-        Box<dyn Future<Output = Result<(Packet<u64, u64, Self::Signature>, Vec<u8>), Self::Error>>>,
+        Box<dyn Future<Output = Result<(Packet<u64, u64, <SingleConsensus as Consensus>::Signature>, Vec<u8>), Self::Error>>>,
     >;
 
     fn node_id(&self) -> Vec<u8> {
         vec![1]
     }
 
-    fn send_unsigned(&self, _target: Option<Vec<u8>>, pkt: Packet<u64, u64, Self::Signature>) {
+    fn send_unsigned(&self, _target: Option<Vec<u8>>, pkt: Packet<u64, u64, <SingleConsensus as Consensus>::Signature>) {
         self.sender.try_send(pkt).unwrap();
     }
 

@@ -12,55 +12,6 @@ use num_traits::{One, Zero};
 
 use crate::{packet::Packet, Role, Voter};
 
-/// Network for node.
-pub trait Network<N, P, I, H> {
-    /// Error for underline network.
-    type Error: Debug + 'static;
-
-    /// Signature generate by node key.
-    type Signature: Signature;
-
-    /// Get current node key.
-    fn node_id(&self) -> N;
-
-    /// Sign packet and send to other node.
-    fn send_unsigned(&self, target: Option<N>, pkt: Packet<I, H, Self::Signature>);
-
-    /// Future for recv method.
-    type RecvFuture: Future<Output = Result<(Packet<I, H, Self::Signature>, N), Self::Error>>;
-    /// Receive packet from network.
-    fn recv(&self) -> Self::RecvFuture;
-}
-
-/// Application.
-pub trait App<N, P, W, I, H> {
-    /// Application Error
-    type Error: Debug + 'static;
-
-    /// Future for propose_epoch method.
-    type ProposeEpochFuture: Future<Output = Result<(I, H), Self::Error>>;
-
-    /// Propose a epoch.
-    ///
-    /// When node propose a epoch, call this function.
-    /// Only called by proposer.
-    fn propose_epoch(&mut self) -> Self::ProposeEpochFuture;
-
-    /// Future for enter_step
-    type EnterStepFuture: Future<Output = Result<(I, H), Self::Error>>;
-    /// Hook for step
-    ///
-    /// When a node enter a step, call this method.
-    fn enter_step(&mut self, step: u8, epoch_id: I, epoch_hash: H) -> Self::EnterStepFuture;
-
-    /// Future for commit
-    type CommitFuture: Future<Output = Result<Vec<Voter<N, P, W>>, Self::Error>>;
-    /// Commit hook
-    ///
-    /// Means all voter confirm this epoch.
-    fn commit(&mut self, epoch_id: &I, epoch_hash: &H) -> Self::CommitFuture;
-}
-
 /// EpochId type.
 pub trait EpochId: Clone + Eq + Ord + Debug + Add<Output = Self> + One + Zero {}
 impl<T> EpochId for T where T: Clone + Eq + Ord + Debug + Add<Output = Self> + One + Zero {}
@@ -103,6 +54,9 @@ pub trait Consensus {
     /// Weight
     type Weight: Weight;
 
+    /// Signature
+    type Signature: Signature;
+
     /// Got latest epoch.
     ///
     /// This method only call on node startup.
@@ -121,5 +75,63 @@ pub trait Consensus {
     /// Compute proposer based on epoch hash.
     fn compute_proposer(&self, epoch_hash: &Self::EpochHash) -> Self::NodeId;
 
-    /// TODO: Add EpochHash unique check.
+    // TODO: Add EpochHash unique check.
+}
+/// Network for node.
+pub trait Network<C: Consensus> {
+    /// Error for underline network.
+    type Error: Debug + 'static;
+
+    /// Get current node key.
+    fn node_id(&self) -> C::NodeId;
+
+    /// Sign packet and send to other node.
+    fn send_unsigned(
+        &self,
+        target: Option<C::NodeId>,
+        pkt: Packet<C::EpochId, C::EpochHash, C::Signature>,
+    );
+
+    /// Future for recv method.
+    type RecvFuture: Future<
+        Output = Result<(Packet<C::EpochId, C::EpochHash, C::Signature>, C::NodeId), Self::Error>,
+    >;
+    /// Receive packet from network.
+    fn recv(&self) -> Self::RecvFuture;
+}
+
+/// Application.
+pub trait App<C: Consensus> {
+    /// Application Error
+    type Error: Debug + 'static;
+
+    /// Future for propose_epoch method.
+    type ProposeEpochFuture: Future<Output = Result<(C::EpochId, C::EpochHash), Self::Error>>;
+
+    /// Propose a epoch.
+    ///
+    /// When node propose a epoch, call this function.
+    /// Only called by proposer.
+    fn propose_epoch(&mut self) -> Self::ProposeEpochFuture;
+
+    /// Future for enter_step
+    type EnterStepFuture: Future<Output = Result<(C::EpochId, C::EpochHash), Self::Error>>;
+    /// Hook for step
+    ///
+    /// When a node enter a step, call this method.
+    fn enter_step(
+        &mut self,
+        step: u8,
+        epoch_id: C::EpochId,
+        epoch_hash: C::EpochHash,
+    ) -> Self::EnterStepFuture;
+
+    /// Future for commit
+    type CommitFuture: Future<
+        Output = Result<Vec<Voter<C::NodeId, C::PublicKey, C::Weight>>, Self::Error>,
+    >;
+    /// Commit hook
+    ///
+    /// Means all voter confirm this epoch.
+    fn commit(&mut self, epoch_id: &C::EpochId, epoch_hash: &C::EpochHash) -> Self::CommitFuture;
 }

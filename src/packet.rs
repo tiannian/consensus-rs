@@ -2,11 +2,11 @@
 
 use alloc::vec::Vec;
 
-use crate::VoteSign;
+use crate::{EpochHash, EpochId, Signature, VoteSign};
 
 /// Broadcast propopse to other node
 #[derive(Debug)]
-pub struct BroadcastPropose<I, H, S> {
+pub struct BroadcastPropose<I: EpochId, H: EpochHash, S: Signature> {
     pub epoch_id: I,
     pub epoch_hash: H,
     pub vote_sign: Option<VoteSign<S>>,
@@ -14,7 +14,7 @@ pub struct BroadcastPropose<I, H, S> {
 
 /// Response propopse to proposer
 #[derive(Debug)]
-pub struct ResponsePropose<I, H, S> {
+pub struct ResponsePropose<I: EpochId, H: EpochHash, S: Signature> {
     pub epoch_id: I,
     pub epoch_hash: H,
     pub vote_sign: Option<VoteSign<S>>,
@@ -22,7 +22,7 @@ pub struct ResponsePropose<I, H, S> {
 
 /// Broadcast commit to other node
 #[derive(Debug)]
-pub struct BroadcastCommit<I, H, S> {
+pub struct BroadcastCommit<I: EpochId, H: EpochHash, S: Signature> {
     pub epoch_id: I,
     pub epoch_hash: H,
     pub vote_signs: Vec<VoteSign<S>>,
@@ -30,13 +30,13 @@ pub struct BroadcastCommit<I, H, S> {
 
 /// Packet for network
 #[derive(Debug)]
-pub enum Packet<I, H, S> {
+pub enum Packet<I: EpochId, H: EpochHash, S: Signature> {
     BroadcastPropose(BroadcastPropose<I, H, S>),
     ResponsePropose(ResponsePropose<I, H, S>),
     BroadcastCommit(BroadcastCommit<I, H, S>),
 }
 
-impl<I, H, S> Packet<I, H, S> {
+impl<I: EpochId, H: EpochHash, S: Signature> Packet<I, H, S> {
     pub fn is_broadcast_propose(&self) -> bool {
         matches!(self, Packet::BroadcastPropose(_))
     }

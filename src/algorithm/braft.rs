@@ -15,7 +15,7 @@ use crate::{
 pub struct BRaft<N, A, C>
 where
     C: Consensus,
-    N: Network<C::NodeId, C::PublicKey, C::EpochId, C::EpochHash>,
+    N: Network<C>,
 {
     network: N,
     app: A,
@@ -34,15 +34,15 @@ where
 
     weight: C::Weight,
     total_weight: C::Weight,
-    vote_signs: Vec<VoteSign<N::Signature>>,
+    vote_signs: Vec<VoteSign<C::Signature>>,
     voter_set: Vec<Voter<C::NodeId, C::PublicKey, C::Weight>>,
 }
 
 impl<N, A, C> BRaft<N, A, C>
 where
-    N: Network<C::NodeId, C::PublicKey, C::EpochId, C::EpochHash>,
+    N: Network<C>,
     C: Consensus,
-    A: App<C::NodeId, C::PublicKey, C::Weight, C::EpochId, C::EpochHash>,
+    A: App<C>,
 {
     /// Build braft node
     ///
@@ -186,7 +186,7 @@ where
 
     async fn wait_propose(
         &mut self,
-        pkt: Packet<C::EpochId, C::EpochHash, N::Signature>,
+        pkt: Packet<C::EpochId, C::EpochHash, C::Signature>,
         sender: C::NodeId,
     ) -> Result<()> {
         match pkt {
@@ -200,7 +200,7 @@ where
     async fn process_propose(
         &mut self,
         sender: C::NodeId,
-        pkt: BroadcastPropose<C::EpochId, C::EpochHash, N::Signature>,
+        pkt: BroadcastPropose<C::EpochId, C::EpochHash, C::Signature>,
     ) -> Result<()> {
         let epoch_id = pkt.epoch_id;
         let epoch_hash = pkt.epoch_hash;
@@ -228,7 +228,7 @@ where
 
     async fn verify_and_accept_epoch(
         &mut self,
-        pkt: BroadcastCommit<C::EpochId, C::EpochHash, N::Signature>,
+        pkt: BroadcastCommit<C::EpochId, C::EpochHash, C::Signature>,
     ) -> Result<()> {
         let epoch_id = pkt.epoch_id;
         let epoch_hash = pkt.epoch_hash;
@@ -261,7 +261,7 @@ where
 
     async fn wait_commit(
         &mut self,
-        pkt: Packet<C::EpochId, C::EpochHash, N::Signature>,
+        pkt: Packet<C::EpochId, C::EpochHash, C::Signature>,
     ) -> Result<()> {
         if let Packet::BroadcastCommit(bc) = pkt {
             self.verify_and_accept_epoch(bc).await?
@@ -272,7 +272,7 @@ where
         Ok(())
     }
 
-    fn error_packet(&self, _pkt: &Packet<C::EpochId, C::EpochHash, N::Signature>) {
+    fn error_packet(&self, _pkt: &Packet<C::EpochId, C::EpochHash, C::Signature>) {
         log::warn!(
             "Error packet, ignore it. epoch: {:?}, round: {}, step: {}",
             self.epoch_id,
@@ -369,7 +369,7 @@ where
         &mut self,
         epoch_id: C::EpochId,
         epoch_hash: C::EpochHash,
-        vote_sign: Option<VoteSign<N::Signature>>,
+        vote_sign: Option<VoteSign<C::Signature>>,
     ) -> Result<()> {
         if epoch_id == self.epoch_id && epoch_hash == self.epoch_hash {
             // Only process right vote. beacuse raft is not BFT.
@@ -396,7 +396,7 @@ where
 
     fn collect_propose_packet(
         &mut self,
-        pkt: Packet<C::EpochId, C::EpochHash, N::Signature>,
+        pkt: Packet<C::EpochId, C::EpochHash, C::Signature>,
     ) -> Result<()> {
         match pkt {
             Packet::ResponsePropose(rp) => {
