@@ -4,8 +4,8 @@
 
 ## Support Algorithms
 
-- [X] BRaft
-- [ ] BPBFT
+- [X] [BRaft](docs/BRaft.md)
+- [ ] [BPBFT](docs/BPBFT.md)
 - [ ] Tendermint
 
 ## Concept
