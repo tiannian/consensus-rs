@@ -100,16 +100,27 @@ impl Consensus for SingleConsensus {
         })
     }
 
-    fn latest_epoch(&self) -> (Self::EpochId, Self::EpochHash) {
-        (0, 0)
+    type LatestEpochFuture = Pin<Box<dyn Future<Output = (u64, u64)>>>;
+
+    fn latest_epoch(&self) -> Self::LatestEpochFuture {
+        Box::pin(async move { (0, 0) })
     }
 
-    fn latest_voter_set(&self) -> Vec<Voter<Self::NodeId, Self::PublicKey, Self::Weight>> {
-        vec![self.voter.clone()]
+    type LatestVoterSetFuture =
+        Pin<Box<dyn Future<Output = Vec<Voter<Self::NodeId, Self::PublicKey, Self::Weight>>>>>;
+
+    fn latest_voter_set(&self) -> Self::LatestVoterSetFuture {
+        let r = vec![self.voter.clone()];
+
+        Box::pin(async move { r })
     }
 
-    fn compute_proposer(&self, _epoch_hash: &Self::EpochHash) -> Self::NodeId {
-        self.proposer.clone()
+    type ComputeProposerFuture = Pin<Box<dyn Future<Output = Self::NodeId>>>;
+
+    fn compute_proposer(&self, _epoch_hash: &Self::EpochHash) -> Self::ComputeProposerFuture {
+        let r = self.proposer.clone();
+
+        Box::pin(async move { r })
     }
 }
 
@@ -130,14 +141,28 @@ impl Network<SingleConsensus> for SingleNetwork {
     type Error = String;
 
     type RecvFuture = Pin<
-        Box<dyn Future<Output = Result<(Packet<u64, u64, <SingleConsensus as Consensus>::Signature>, Vec<u8>), Self::Error>>>,
+        Box<
+            dyn Future<
+                Output = Result<
+                    (
+                        Packet<u64, u64, <SingleConsensus as Consensus>::Signature>,
+                        Vec<u8>,
+                    ),
+                    Self::Error,
+                >,
+            >,
+        >,
     >;
 
     fn node_id(&self) -> Vec<u8> {
         vec![1]
     }
 
-    fn send_unsigned(&self, _target: Option<Vec<u8>>, pkt: Packet<u64, u64, <SingleConsensus as Consensus>::Signature>) {
+    fn send_unsigned(
+        &self,
+        _target: Option<Vec<u8>>,
+        pkt: Packet<u64, u64, <SingleConsensus as Consensus>::Signature>,
+    ) {
         self.sender.try_send(pkt).unwrap();
     }
 

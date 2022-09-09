@@ -12,9 +12,11 @@ fn signle_node() {
     let app = SingleApp::new();
     let consensus = SingleConsensus::new(vec![1]);
 
-    let mut braft = BRaft::new(network, consensus, app);
+    let braft = BRaft::new(network, consensus, app);
 
     smol::block_on(async move {
+        let mut braft = braft.await;
+
         for _ in 0..30 {
             braft.do_tick().await.unwrap();
         }
@@ -29,9 +31,11 @@ fn signle_follower_node() {
     let app = SingleApp::new();
     let consensus = SingleConsensus::new(vec![2]);
 
-    let mut braft = BRaft::new(network, consensus, app);
+    let braft = BRaft::new(network, consensus, app);
 
     smol::block_on(async move {
+        let mut braft = braft.await;
+
         for _ in 0..30 {
             braft.do_tick().await.unwrap();
         }

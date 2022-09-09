@@ -47,19 +47,19 @@ where
     /// Build braft node
     ///
     /// Pass lowlevel network, consensus and application.
-    pub fn new(network: N, consensus: C, app: A) -> Self {
+    pub async fn new(network: N, consensus: C, app: A) -> Self {
         let node_id = network.node_id();
 
-        let (epoch_id, epoch_hash) = consensus.latest_epoch();
+        let (epoch_id, epoch_hash) = consensus.latest_epoch().await;
 
-        let voter_set = consensus.latest_voter_set();
+        let voter_set = consensus.latest_voter_set().await;
 
         let total_weight = voter_set.iter().map(|e| e.weight.clone()).sum();
 
         let mut role = Role::Observer;
 
         // TODO: need check proposer in voter_set.
-        let proposer = consensus.compute_proposer(&epoch_hash);
+        let proposer = consensus.compute_proposer(&epoch_hash).await;
 
         for i in &voter_set {
             if i.voter_id == node_id {
@@ -142,7 +142,7 @@ where
 
         // Update role and weight
         if self.step == 0 && self.round == 0 {
-            let proposer = self.consensus.compute_proposer(&self.epoch_hash);
+            let proposer = self.consensus.compute_proposer(&self.epoch_hash).await;
 
             log::debug!("proposer: {:?}, node_id: {:?}", proposer, self.node_id);
 

@@ -57,23 +57,31 @@ pub trait Consensus {
     /// Signature
     type Signature: Signature;
 
-    /// Got latest epoch.
+    /// Future of latest_epoch
+    type LatestEpochFuture: Future<Output = (Self::EpochId, Self::EpochHash)>;
+    /// Get latest epoch.
     ///
     /// This method only call on node startup.
-    fn latest_epoch(&self) -> (Self::EpochId, Self::EpochHash);
+    fn latest_epoch(&self) -> Self::LatestEpochFuture;
 
+    /// Future of latest_voter_set
+    type LatestVoterSetFuture: Future<
+        Output = Vec<Voter<Self::NodeId, Self::PublicKey, Self::Weight>>,
+    >;
     /// Got latest voter set.
     ///
     /// This method only call on node startup.
-    fn latest_voter_set(&self) -> Vec<Voter<Self::NodeId, Self::PublicKey, Self::Weight>>;
+    fn latest_voter_set(&self) -> Self::LatestVoterSetFuture;
 
     /// Future of `step_timer`.
     type Timer: Future<Output = ()>;
     /// Build a timer for step.
     fn step_timer(&self, role: &Role, step: u8) -> Self::Timer;
 
+    /// Future of compute_proposer
+    type ComputeProposerFuture: Future<Output = Self::NodeId>;
     /// Compute proposer based on epoch hash.
-    fn compute_proposer(&self, epoch_hash: &Self::EpochHash) -> Self::NodeId;
+    fn compute_proposer(&self, epoch_hash: &Self::EpochHash) -> Self::ComputeProposerFuture;
 
     // TODO: Add EpochHash unique check.
 }
