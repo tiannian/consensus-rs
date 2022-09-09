@@ -20,7 +20,7 @@ Node roles represent the behavior of nodes in the consensus process.
 
 - Voter: Do consensus among these node 
    - Proposer: Propose epoch
-   - Follower: Accept and check epoch, Have change to become a Proposer.
+   - Follower: Accept and check epoch, Have chance to become a Proposer.
 - Observer: Only accept and check epoch.
 
 ### SMR
