@@ -13,22 +13,32 @@ use num_traits::{One, Zero};
 use crate::{packet::Packet, Role, Voter};
 
 /// EpochId type.
+///
+/// Typical type is {integer}.
 pub trait EpochId: Clone + Eq + Ord + Debug + Add<Output = Self> + One + Zero {}
 impl<T> EpochId for T where T: Clone + Eq + Ord + Debug + Add<Output = Self> + One + Zero {}
 
 /// EpochHash type.
+///
+/// Typical type is bytes: Vec<u8>, [u8; N], or any type can compare with ==
 pub trait EpochHash: Clone + Eq + Debug {}
 impl<T> EpochHash for T where T: Clone + Eq + Debug {}
 
 /// NodeId type.
+///
+/// Typical type is bytes: Vec<u8>, [u8; N], or any type can compare with ==
 pub trait NodeId: Clone + Eq + Debug {}
 impl<T> NodeId for T where T: Clone + Eq + Debug {}
 
 /// Weight type.
+///
+/// Typical type is {integer}.
 pub trait Weight: Clone + Zero + One + AddAssign + Eq + Sum + Mul<Output = Self> + Ord {}
 impl<T> Weight for T where T: Clone + Zero + One + AddAssign + Eq + Sum + Mul<Output = Self> + Ord {}
 
 /// Signature
+///
+/// Typical type is bytes: Vec<u8>, [u8; N], or any type can compare with ==
 pub trait Signature: Clone + Debug {}
 impl<T> Signature for T where T: Clone + Debug {}
 
