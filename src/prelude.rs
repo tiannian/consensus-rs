@@ -8,7 +8,7 @@ use core::{
 
 use num_traits::{One, Zero};
 
-use crate::{ErrorBehavior, Role, Voter, Packet};
+use crate::{ErrorBehavior, Packet, Role, Voter};
 
 /// EpochId type.
 ///
@@ -53,9 +53,15 @@ pub trait Network: Core {
 
     fn node_id(&self) -> Self::NodeId;
 
-    async fn send_unsigned(&self, target: Option<Self::NodeId>, packet: Packet<Self::EpochId, Self::EpochHash>) -> Result<(), Self::Error>;
+    async fn send_unsigned(
+        &self,
+        target: Option<Self::NodeId>,
+        packet: Packet<Self::EpochId, Self::EpochHash>,
+    ) -> Result<(), Self::Error>;
 
-    async fn recv_signed(&self) -> Result<(Self::NodeId, Packet<Self::EpochId, Self::EpochHash>), Self::Error>;
+    async fn recv_signed(
+        &self,
+    ) -> Result<(Self::NodeId, Packet<Self::EpochId, Self::EpochHash>), Self::Error>;
 }
 
 pub trait Setup: Core {
