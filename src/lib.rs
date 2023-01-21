@@ -2,8 +2,6 @@
 #![allow(incomplete_features)]
 #![feature(async_fn_in_trait)]
 
-extern crate alloc;
-
 mod prelude;
 pub use prelude::*;
 
@@ -13,5 +11,8 @@ pub use types::*;
 mod error;
 pub use error::*;
 
-mod packet;
-pub use packet::*;
+pub mod packet;
+#[doc(inline)]
+pub use packet::Packet;
+
+pub(crate) mod macros;

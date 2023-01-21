@@ -18,15 +18,15 @@ impl<T> EpochId for T where T: Clone + Eq + Ord + Debug + Add<Output = Self> + O
 
 /// EpochHash type.
 ///
-/// Typical type is bytes: Vec<u8>, [u8; N], or any type can compare with ==
-pub trait EpochHash: Clone + Eq + Debug {}
-impl<T> EpochHash for T where T: Clone + Eq + Debug {}
+/// Typical type is bytes: `Vec<u8>`, `[u8; N]`, or any type can compare with ==
+pub trait EpochHash: Clone + Eq + PartialEq + Debug {}
+impl<const N: usize, T: Clone + Eq + PartialEq + Debug> EpochHash for [T; N] {}
 
 /// NodeId type.
 ///
-/// Typical type is bytes: Vec<u8>, [u8; N], or any type can compare with ==
+/// Typical type is bytes: `Vec<u8>`, `[u8; N]`, or any type can compare with ==
 pub trait NodeId: Clone + Eq + Debug {}
-impl<T> NodeId for T where T: Clone + Eq + Debug {}
+impl<const N: usize, T: Clone + Eq + PartialEq + Debug> NodeId for [T; N] {}
 
 /// Weight type.
 ///
@@ -46,11 +46,11 @@ pub trait Core {
     type EpochHash: EpochHash;
 
     type Weight: Weight;
+
+    type Error: Error;
 }
 
 pub trait Network: Core {
-    type Error: Error;
-
     fn node_id(&self) -> Self::NodeId;
 
     async fn send_unsigned(
@@ -81,8 +81,6 @@ pub trait Startup: Core {
 }
 
 pub trait Application: Core {
-    type Error: Error;
-
     /// Compute proposer based on epoch hash.
     async fn compute_proposer(&self, epoch_hash: &Self::EpochHash) -> Self::NodeId;
 

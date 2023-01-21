@@ -2,11 +2,11 @@
 
 use core::fmt::Debug;
 
-use alloc::boxed::Box;
+use crate::Core;
 
 /// Error
 #[derive(Debug)]
-pub enum Error {
+pub enum Error<C: Core> {
     /// Got a unexpected packet from network
     UnexpectedPacket,
     /// Lose signature on packet
@@ -16,21 +16,8 @@ pub enum Error {
     Timeout,
 
     /// Error from app
-    AppError(Box<dyn Debug>),
-
-    /// Error from network
-    NetworkError(Box<dyn Debug>),
-}
-
-impl Error {
-    pub(crate) fn app_error(e: impl Debug + 'static) -> Self {
-        Self::AppError(Box::new(e))
-    }
-
-    pub(crate) fn network_error(e: impl Debug + 'static) -> Self {
-        Self::NetworkError(Box::new(e))
-    }
+    ConsensusError(C::Error),
 }
 
 /// Alias of crate result.
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<C, T> = core::result::Result<T, Error<C>>;
