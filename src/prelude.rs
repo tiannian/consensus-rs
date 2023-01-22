@@ -74,16 +74,13 @@ pub trait Startup: Core {
     // type LatestEpochFuture: Future<Output = (Self::EpochId, Self::EpochHash)>;
     /// Get latest epoch.
     // fn latest_epoch(&self) -> Self::LatestEpochFuture;
-    async fn latest_epoch(&self) -> Self::EpochId;
+    async fn latest_epoch(&self) -> (Self::EpochId, Self::EpochHash);
 
     /// Got latest voter set.
     async fn latest_voter_set(&self) -> &[Voter<Self::NodeId, Self::Weight>];
 }
 
-pub trait Application: Core {
-    /// Compute proposer based on epoch hash.
-    async fn compute_proposer(&self, epoch_hash: &Self::EpochHash) -> Self::NodeId;
-
+pub trait Consensus: Core {
     /// Propose a epoch.
     ///
     /// When node propose a epoch, call this function.

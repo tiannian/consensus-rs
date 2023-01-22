@@ -11,6 +11,8 @@ pub use types::*;
 mod error;
 pub use error::*;
 
+pub mod algorithm;
+
 pub mod packet;
 #[doc(inline)]
 pub use packet::Packet;
