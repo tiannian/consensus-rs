@@ -47,7 +47,7 @@ The state diff for each `Epoch` is represented using data with any length. This 
 
 #### Sparse Epoch
 
-Epoch IDs do not have to be strictly auto-incrementing. It can be sparse.  Just make sure the numbers increase over time.
+Epoch IDs do not have to be strictly auto-incrementing. It can be sparse.  Just make sure the numbers increased based on time.
 
 ### Relaxed Stable Network
 
