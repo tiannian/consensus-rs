@@ -74,7 +74,7 @@ The framework supports weight-based fault tolerance. With weight:
 
 ## Design
 
-### Comsensus Triple
+### Consensus Triple
 
 - Epoch: Which Epoch is consensus.
 - Round: How many round change caused by fault.
